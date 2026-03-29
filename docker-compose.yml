@@ -1,0 +1,21 @@
+services:
+  freeradius:
+    image: freeradius/freeradius-server:latest-3.2
+    container_name: nac_radius
+    hostname: radius-server
+    env_file: .env
+    ports:
+      - "1812:1812/udp" # Authorization/Authentication
+      - "1813:1813/udp" # Accounting
+
+    healthcheck:
+      test: ["CMD", "nc", "-z", "-u", "127.0.0.1", "1812"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+    networks:
+      - nac_network
+
+networks:
+  nac_network:
+    driver: bridge
