@@ -1,4 +1,23 @@
 services:
+  db:
+    image: postgres:18-alpine
+    container_name: nac_postgres
+    env_file: .env # Contains DB secrets
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - ./postgres/data:/var/lib/postgresql # Persistent data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql # Initial DB setup
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nac_network
+
   freeradius:
     image: freeradius/freeradius-server:latest-3.2
     container_name: nac_radius
@@ -7,11 +26,13 @@ services:
     ports:
       - "1812:1812/udp" # Authorization/Authentication
       - "1813:1813/udp" # Accounting
-
+    depends_on:
+      db:
+        condition: service_healthy # Wait until DB is up and healthy
     healthcheck:
-      test: ["CMD", "nc", "-z", "-u", "127.0.0.1", "1812"]
-      interval: 20s
-      timeout: 10s
+      test: ["CMD", "pidof", "freeradius"]
+      interval: 10s
+      timeout: 5s
       retries: 3
     networks:
       - nac_network
