@@ -1,11 +1,31 @@
 -- postgres/init.sql
+-- PAP/CHAP
 CREATE TABLE radcheck (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(64) NOT NULL DEFAULT '',
-    attribute VARCHAR(64) NOT NULL DEFAULT '',
-    op CHAR(2) NOT NULL DEFAULT '==',
-    value VARCHAR(253) NOT NULL DEFAULT ''
+    id serial PRIMARY KEY,
+    username varchar(64) NOT NULL DEFAULT '',
+    attribute varchar(64) NOT NULL DEFAULT '',
+    op char(2) NOT NULL DEFAULT '==',
+    value varchar(253) NOT NULL DEFAULT ''
 );
 
-INSERT INTO radcheck (username, attribute, op, value) 
-VALUES ('db_test_user', 'Cleartext-Password', ':=', 'db_sifre_123');
+-- Response
+CREATE TABLE radreply (
+    id serial PRIMARY KEY,
+    username varchar(64) NOT NULL DEFAULT '',
+    attribute varchar(64) NOT NULL DEFAULT '',
+    op char(2) NOT NULL DEFAULT '=',
+    value varchar(253) NOT NULL DEFAULT ''
+);
+
+-- Accounting
+CREATE TABLE radacct (
+    radacctid bigserial PRIMARY KEY,
+    acctsessionid varchar(64) NOT NULL DEFAULT '',
+    username varchar(64) NOT NULL DEFAULT '',
+    nasipaddress inet NOT NULL,
+    acctstarttime timestamp with time zone,
+    acctstoptime timestamp with time zone,
+    acctsessiontime interval,
+    acctinputoctets bigint,
+    acctoutputoctets bigint
+);
