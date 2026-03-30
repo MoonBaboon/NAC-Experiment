@@ -59,11 +59,16 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_HOST=db
+    volumes:
+      - ./freeradius/config/sites-enabled/default:/etc/raddb/sites-enabled/default
+      - ./freeradius/config/mods-enabled/rest:/etc/raddb/mods-enabled/rest
     ports:
       - "1812:1812/udp" # Authorization/Authentication
       - "1813:1813/udp" # Accounting
     depends_on:
       db:
+        condition: service_healthy
+      api:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "pidof", "freeradius"]
