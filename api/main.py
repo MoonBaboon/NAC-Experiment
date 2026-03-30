@@ -121,6 +121,56 @@ async def accounting(request: Request):
     
     return {"status": "success"}
 
+
+# --- 4. MONITORING ENDPOINTS ---
+
+@app.get("/users")
+async def get_users():
+    """
+    List all registered users and their basic group/status info from Postgres
+    """
+    with engine.connect() as conn:
+        # Join radcheck with radusergroup to show who belongs to which VLAN/Group
+        query = text("""
+            SELECT rc.username, ug.groupname 
+            FROM radcheck rc
+            LEFT JOIN radusergroup ug ON rc.username = ug.username
+            WHERE rc.attribute = 'User-Password'
+        """)
+        result = conn.execute(query).fetchall()
+        
+        # Convert SQLAlchemy rows to list of dictionaries
+        users_list = [
+            {"username": row[0], "group": row[1] if row[1] else "No Group"} 
+            for row in result
+        ]
+        return {"total_users": len(users_list), "users": users_list}
+
+@app.get("/sessions/active")
+async def get_active_sessions():
+    """
+    Query Redis to find all currently 'Live' sessions
+    """
+    # Find all keys in Redis that start with our prefix
+    keys = cache.keys("session:*")
+    active_sessions = []
+    
+    for key in keys:
+        username = cache.get(key)
+        # Extract the Session ID from the key name (e.g., 'session:ABC' -> 'ABC')
+        session_id = key.replace("session:", "")
+        
+        active_sessions.append({
+            "username": username,
+            "session_id": session_id
+        })
+        
+    return {
+        "active_count": len(active_sessions),
+        "sessions": active_sessions
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "healthy"}
