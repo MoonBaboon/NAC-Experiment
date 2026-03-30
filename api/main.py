@@ -20,6 +20,12 @@ async def authenticate(request: Request, response: Response):
     username = data.get("User-Name")
     sent_password = data.get("User-Password")
 
+    # 1. Rate Limiting (Redis)
+    fail_key = f"fail_count:{username}"
+    if int(cache.get(fail_key) or 0) >= 5:
+        response.status_code = status.HTTP_429_TOO_MANY_REQUESTS
+        return {"control": {"Auth-Type": "Reject", "Message": "Too many failures. Wait 1 min."}}
+
     with engine.connect() as conn:
         query = text("SELECT value FROM radcheck WHERE username = :u AND attribute = 'Crypt-Password'")
         result = conn.execute(query, {"u": username}).fetchone()
@@ -34,14 +40,18 @@ async def authenticate(request: Request, response: Response):
 
                 # Direct check using bcrypt
                 if bcrypt.checkpw(password_bytes, hash_bytes):
+                    cache.delete(fail_key) # Reset fail count on success
                     return {"control": {"Auth-Type": "Accept"}}
                 else:
                     print(f"Auth Failed for {username}: Password mismatch.")
             except Exception as e:
                 print(f"Native Bcrypt Error: {e}")
-        else:
-            print(f"User {username} not found.")
 
+        # Counter for failed attempts on cache(60s expiration)
+        current_fails = int(cache.get(fail_key) or 0) + 1
+        cache.set(fail_key, current_fails, ex=60)
+
+        # Reject
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"control": {"Auth-Type": "Reject"}}
 
@@ -138,7 +148,6 @@ async def accounting(request: Request):
 
 
 # --- 4. MONITORING ENDPOINTS ---
-
 @app.get("/users")
 async def get_users():
     """
@@ -150,7 +159,7 @@ async def get_users():
             SELECT rc.username, ug.groupname 
             FROM radcheck rc
             LEFT JOIN radusergroup ug ON rc.username = ug.username
-            WHERE rc.attribute = 'User-Password'
+            WHERE rc.attribute = 'Crypt-Password'
         """)
         result = conn.execute(query).fetchall()
         
