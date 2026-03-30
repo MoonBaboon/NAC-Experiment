@@ -706,6 +706,7 @@ accounting {
 	#  Update accounting packet by adding the CUI attribute
 	#  recorded from the corresponding Access-Accept
 	#  use it only if your NAS boxes do not support CUI themselves
+	rest
 #	cui
 
 	#

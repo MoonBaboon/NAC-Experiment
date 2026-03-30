@@ -225,10 +225,16 @@ rest {
 		method = 'post'
 		tls = ${..tls}
 	}
+	# accounting {
+	# 	uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
+	# 	method = 'post'
+	# 	tls = ${..tls}
+	# }
 	accounting {
-		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
-		method = 'post'
-		tls = ${..tls}
+		uri = "${..connect_uri}/accounting"
+		method = "post"
+		body = "json"
+		data = '{ "User-Name": "%{User-Name}", "Acct-Status-Type": "%{Acct-Status-Type}", "Acct-Session-Id": "%{Acct-Session-Id}", "NAS-IP-Address": "%{NAS-IP-Address}", "Acct-Input-Octets": "%{Acct-Input-Octets}", "Acct-Output-Octets": "%{Acct-Output-Octets}", "Acct-Session-Time": "%{Acct-Session-Time}" }'
 	}
 	post-auth {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"

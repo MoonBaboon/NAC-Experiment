@@ -1,11 +1,15 @@
 from fastapi import FastAPI, Request, Response, status
 from sqlalchemy import create_engine, text
 import os
+import redis
+from datetime import datetime
 
 app = FastAPI()
 
 DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@db:5432/{os.getenv('DB_NAME')}"
 engine = create_engine(DB_URL)
+
+cache = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 
 # --- 1. AUTHENTICATION ENDPOINT ---
 @app.post("/auth")
@@ -52,6 +56,70 @@ async def authorize(request: Request):
         reply[attr] = val
 
     return {"reply": reply}
+
+# --- 3. ACCOUNTING ENDPOINT ---
+@app.post("/accounting")
+async def accounting(request: Request):
+    data = await request.json()
+    status_type = data.get("Acct-Status-Type")
+    username = data.get("User-Name")
+    session_id = data.get("Acct-Session-Id")
+    nas_ip = data.get("NAS-IP-Address")
+    input_octets = data.get("Acct-Input-Octets", 0)
+    output_octets = data.get("Acct-Output-Octets", 0)
+    session_time = data.get("Acct-Session-Time", 0)
+
+
+    # Convert empty strings or None to 0
+    def clean_int(val):
+        if val is None or val == "":
+            return 0
+        try:
+            return int(val)
+        except ValueError:
+            return 0
+
+    # Handling empty Accounting info by defaukting to 0
+    input_octets = clean_int(data.get("Acct-Input-Octets"))
+    output_octets = clean_int(data.get("Acct-Output-Octets"))
+    session_time = clean_int(data.get("Acct-Session-Time"))
+
+    with engine.connect() as conn:
+        if status_type == "Start":
+            conn.execute(
+                text("""
+                    INSERT INTO radacct (acctsessionid, username, nasipaddress, acctstarttime, acctinputoctets, acctoutputoctets)
+                    VALUES (:sid, :u, :nas, now(), 0, 0)
+                """),
+                {"sid": session_id, "u": username, "nas": nas_ip}
+            )
+
+            cache.set(f"session:{session_id}", username, ex=3600)
+
+        elif status_type == "Interim-Update":
+            conn.execute(
+                text("""
+                    UPDATE radacct SET acctinputoctets = :inp, acctoutputoctets = :out, acctsessiontime = :time
+                    WHERE acctsessionid = :sid
+                """),
+                {"inp": input_octets, "out": output_octets, "time": session_time, "sid": session_id}
+            )
+
+        elif status_type == "Stop":
+            conn.execute(
+                text("""
+                    UPDATE radacct SET acctstoptime = now(), acctinputoctets = :inp, 
+                    acctoutputoctets = :out, acctsessiontime = :time
+                    WHERE acctsessionid = :sid
+                """),
+                {"inp": input_octets, "out": output_octets, "time": session_time, "sid": session_id}
+            )
+
+            cache.delete(f"session:{session_id}")
+            
+        conn.commit()
+    
+    return {"status": "success"}
 
 @app.get("/health")
 def health():
