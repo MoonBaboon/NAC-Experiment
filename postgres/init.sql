@@ -1,31 +1,53 @@
--- postgres/init.sql
--- PAP/CHAP
-CREATE TABLE radcheck (
-    id serial PRIMARY KEY,
-    username varchar(64) NOT NULL DEFAULT '',
-    attribute varchar(64) NOT NULL DEFAULT '',
-    op char(2) NOT NULL DEFAULT '==',
-    value varchar(253) NOT NULL DEFAULT ''
+-- 1. radcheck: Stores user credentials (username and password)
+CREATE TABLE IF NOT EXISTS radcheck (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(64) NOT NULL DEFAULT '',
+    attribute VARCHAR(64) NOT NULL DEFAULT 'User-Password',
+    op CHAR(2) NOT NULL DEFAULT '==',
+    value VARCHAR(253) NOT NULL DEFAULT ''
 );
 
--- Response
-CREATE TABLE radreply (
-    id serial PRIMARY KEY,
-    username varchar(64) NOT NULL DEFAULT '',
-    attribute varchar(64) NOT NULL DEFAULT '',
-    op char(2) NOT NULL DEFAULT '=',
-    value varchar(253) NOT NULL DEFAULT ''
+-- 2. radreply: Stores specific attributes to return to a user
+CREATE TABLE IF NOT EXISTS radreply (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(64) NOT NULL DEFAULT '',
+    attribute VARCHAR(64) NOT NULL DEFAULT '',
+    op CHAR(2) NOT NULL DEFAULT '=',
+    value VARCHAR(253) NOT NULL DEFAULT ''
 );
 
--- Accounting
-CREATE TABLE radacct (
-    radacctid bigserial PRIMARY KEY,
-    acctsessionid varchar(64) NOT NULL DEFAULT '',
-    username varchar(64) NOT NULL DEFAULT '',
-    nasipaddress inet NOT NULL,
-    acctstarttime timestamp with time zone,
-    acctstoptime timestamp with time zone,
-    acctsessiontime interval,
-    acctinputoctets bigint,
-    acctoutputoctets bigint
+-- 3. radusergroup: Links users to groups (e.g., 'kerem' belongs to 'admin')
+CREATE TABLE IF NOT EXISTS radusergroup (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(64) NOT NULL DEFAULT '',
+    groupname VARCHAR(64) NOT NULL DEFAULT '',
+    priority INTEGER NOT NULL DEFAULT 1
+);
+
+-- 4. radgroupreply: Stores attributes assigned to a group (e.g., VLAN for 'admin')
+CREATE TABLE IF NOT EXISTS radgroupreply (
+    id SERIAL PRIMARY KEY,
+    groupname VARCHAR(64) NOT NULL DEFAULT '',
+    attribute VARCHAR(64) NOT NULL DEFAULT '',
+    op CHAR(2) NOT NULL DEFAULT '=',
+    value VARCHAR(253) NOT NULL DEFAULT ''
+);
+
+-- 5. radacct: Stores Accounting records (session start/stop, data usage)
+CREATE TABLE IF NOT EXISTS radacct (
+    radacctid BIGSERIAL PRIMARY KEY,
+    acctsessionid VARCHAR(64) NOT NULL DEFAULT '',
+    acctuniqueid VARCHAR(32) NOT NULL DEFAULT '',
+    username VARCHAR(64) NOT NULL DEFAULT '',
+    groupname VARCHAR(64) NOT NULL DEFAULT '',
+    nasipaddress INET NOT NULL,
+    nasportid VARCHAR(32) DEFAULT NULL,
+    acctstarttime TIMESTAMP WITH TIME ZONE,
+    acctupdatetime TIMESTAMP WITH TIME ZONE,
+    acctstoptime TIMESTAMP WITH TIME ZONE,
+    acctsessiontime BIGINT DEFAULT NULL,
+    acctinputoctets BIGINT DEFAULT NULL,
+    acctoutputoctets BIGINT DEFAULT NULL,
+    callingstationid VARCHAR(120) DEFAULT '',
+    framedipaddress INET DEFAULT NULL
 );
