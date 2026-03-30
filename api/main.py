@@ -2,7 +2,9 @@ from fastapi import FastAPI, Request, Response, status
 from sqlalchemy import create_engine, text
 import os
 import redis
+import bcrypt
 from datetime import datetime
+
 
 app = FastAPI()
 
@@ -16,16 +18,29 @@ cache = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 async def authenticate(request: Request, response: Response):
     data = await request.json()
     username = data.get("User-Name")
-    password = data.get("User-Password")
+    sent_password = data.get("User-Password")
 
     with engine.connect() as conn:
-        query = text("SELECT value FROM radcheck WHERE username = :u AND attribute = 'User-Password'")
-        user = conn.execute(query, {"u": username}).fetchone()
+        query = text("SELECT value FROM radcheck WHERE username = :u AND attribute = 'Crypt-Password'")
+        result = conn.execute(query, {"u": username}).fetchone()
 
-#        print(f"Auth Attempt: {username} | DB Pass: {user[0] if user else 'None'} | Sent Pass: {password}")
+        if result:
+            db_hash = result[0].strip()
+            
+            try:
+                # Convert both the password and the hash to bytes for comparison
+                password_bytes = sent_password.encode('utf-8')
+                hash_bytes = db_hash.encode('utf-8')
 
-        if user and user[0] == password:
-            return {"control": {"Auth-Type": "Accept"}}
+                # Direct check using bcrypt
+                if bcrypt.checkpw(password_bytes, hash_bytes):
+                    return {"control": {"Auth-Type": "Accept"}}
+                else:
+                    print(f"Auth Failed for {username}: Password mismatch.")
+            except Exception as e:
+                print(f"Native Bcrypt Error: {e}")
+        else:
+            print(f"User {username} not found.")
 
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"control": {"Auth-Type": "Reject"}}
