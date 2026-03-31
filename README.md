@@ -2,24 +2,26 @@
 This is a custom Nework Access Control implementation utilizing Docker, FreeRadius, Postgresql, Redis and FastAPI.
 
 ## Overview:
-The design structure of the services looks like as follows:
+The design structure of the services looks as follows:
 
-![NAC](resources/nac-image.png)
+[![NAC Architecture](resources/nac-image.png)]
+
+```text
 .
 ├── api
-│   ├── Dockerfile
-│   ├── main.py
-│   └── requirements.txt
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
 ├── docker-compose.yml
 ├── freeradius
-│   └── config
-│       ├── mods-enabled
-│       │   └── rest
-│       └── sites-enabled
-│           └── default
+│   └── config
+│       ├── mods-enabled
+│       │   └── rest
+│       └── sites-enabled
+│           └── default
 ├── postgres
-│   ├── data  
-│   └── init.sql
+│   ├── data
+│   └── init.sql
 ├── README.md
 └── redis
 
