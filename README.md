@@ -4,7 +4,7 @@ This is a custom Nework Access Control implementation utilizing Docker, FreeRadi
 ## Overview:
 The design structure of the services looks as follows:
 
-[![NAC Architecture](resources/nac-image.png)]
+[![NAC Architecture](resources/design.png)]
 
 ```text
 .
@@ -24,6 +24,7 @@ The design structure of the services looks as follows:
 │   └── init.sql
 ├── README.md
 └── redis
+```
 
 ## Configuration and Setup:
 - The `.env.example` file in root folder must be renamed as `.env`
